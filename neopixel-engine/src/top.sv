@@ -10,6 +10,7 @@ module top (
   // output wire o_miso,
 
   output wire [5:0] o_neopixel_out,
+  output wire o_panel_en,
 
 //  output wire [7:0] o_debug_led,
   output wire o_debug_led,
@@ -34,6 +35,11 @@ module top (
   reg [25:0] r_led_counter = 0;
   reg r_debug_led_blink = 0;
 
+  // パネルを遅延起動させるためのタイマー (50MHz -> 約1秒)
+  localparam PANEL_EN_DELAY = 26'd50_000_000;
+  reg [25:0] r_panel_delay_cnt = 0;
+  reg r_panel_en = 1'b0;
+
   always @(posedge i_clk50m) begin
     if(!i_rst_n) begin
       r_led_counter <= 0;
@@ -54,6 +60,22 @@ module top (
   assign o_debug_cs = i_cs;
   assign o_debug_mosi = i_mosi;
   assign o_debug_led = r_debug_led_blink;  // Lチカ信号
+
+  // パネル有効化タイマー
+  always @(posedge i_clk50m) begin
+    if(!i_rst_n) begin
+      r_panel_delay_cnt <= 0;
+      r_panel_en <= 1'b0;
+    end else if(!r_panel_en) begin
+      if(r_panel_delay_cnt >= PANEL_EN_DELAY - 1) begin
+        r_panel_en <= 1'b1;
+      end else begin
+        r_panel_delay_cnt <= r_panel_delay_cnt + 1;
+      end
+    end
+  end
+
+  assign o_panel_en = r_panel_en;
 //  assign o_debug_led[7:0] = {2'b00, w_neopixel_out_bus[5:0]};
 
   // spi controller
@@ -208,6 +230,5 @@ module top (
   assign o_neopixel_out = w_neopixel_out_bus;
 
 endmodule
-
 
 

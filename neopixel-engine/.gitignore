@@ -1,0 +1,14 @@
+#Gowin EDA
+*/impl
+gowin.gprj.user
+
+
+#latex
+*.aux
+*.log
+*.synctex.gz
+*.bbl
+*.blg
+*.bcf
+*.run.xml
+*.bbl-SAVE-ERROR

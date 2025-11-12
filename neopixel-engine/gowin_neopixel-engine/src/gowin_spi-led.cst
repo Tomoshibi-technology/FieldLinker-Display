@@ -1,0 +1,39 @@
+//Copyright (C)2014-2025 Gowin Semiconductor Corporation.
+//All rights reserved. 
+//File Title: Physical Constraints file
+//Tool Version: V1.9.11.01 Education
+//Part Number: GW5A-LV25MG121NC1/I0
+//Device: GW5A-25
+//Device Version: A
+//Created Time: Tue 09 23 18:06:26 2025
+
+IO_LOC "o_debug_mosi" J5;
+IO_PORT "o_debug_mosi" IO_TYPE=LVCMOS33 PULL_MODE=NONE DRIVE=8 BANK_VCCIO=3.3;
+IO_LOC "o_debug_cs" K5;
+IO_PORT "o_debug_cs" IO_TYPE=LVCMOS33 PULL_MODE=NONE DRIVE=8 BANK_VCCIO=3.3;
+IO_LOC "o_debug_sclk" H5;
+IO_PORT "o_debug_sclk" IO_TYPE=LVCMOS33 PULL_MODE=NONE DRIVE=8 BANK_VCCIO=3.3;
+IO_LOC "o_debug_led" L5;
+IO_PORT "o_debug_led" IO_TYPE=LVCMOS33 PULL_MODE=NONE DRIVE=8 BANK_VCCIO=3.3;
+IO_LOC "o_neopixel_out[5]" L1;
+IO_PORT "o_neopixel_out[5]" IO_TYPE=LVCMOS33 PULL_MODE=NONE DRIVE=8 BANK_VCCIO=3.3;
+IO_LOC "o_neopixel_out[4]" K2;
+IO_PORT "o_neopixel_out[4]" IO_TYPE=LVCMOS33 PULL_MODE=NONE DRIVE=8 BANK_VCCIO=3.3;
+IO_LOC "o_neopixel_out[3]" H4;
+IO_PORT "o_neopixel_out[3]" IO_TYPE=LVCMOS33 PULL_MODE=NONE DRIVE=8 BANK_VCCIO=3.3;
+IO_LOC "o_neopixel_out[2]" H2;
+IO_PORT "o_neopixel_out[2]" IO_TYPE=LVCMOS33 PULL_MODE=NONE DRIVE=8 BANK_VCCIO=3.3;
+IO_LOC "o_neopixel_out[1]" G1;
+IO_PORT "o_neopixel_out[1]" IO_TYPE=LVCMOS33 PULL_MODE=NONE DRIVE=8 BANK_VCCIO=3.3;
+IO_LOC "o_neopixel_out[0]" K4;
+IO_PORT "o_neopixel_out[0]" IO_TYPE=LVCMOS33 PULL_MODE=NONE DRIVE=8 BANK_VCCIO=3.3;
+IO_LOC "i_mosi" B11;
+IO_PORT "i_mosi" IO_TYPE=LVCMOS33 PULL_MODE=NONE BANK_VCCIO=3.3;
+IO_LOC "i_cs" C11;
+IO_PORT "i_cs" IO_TYPE=LVCMOS33 PULL_MODE=NONE BANK_VCCIO=3.3;
+IO_LOC "i_sclk" B10;
+IO_PORT "i_sclk" IO_TYPE=LVCMOS33 PULL_MODE=NONE BANK_VCCIO=3.3;
+IO_LOC "i_rst_n" H11;
+IO_PORT "i_rst_n" IO_TYPE=LVCMOS33 PULL_MODE=NONE BANK_VCCIO=3.3;
+IO_LOC "i_clk50m" E2;
+IO_PORT "i_clk50m" IO_TYPE=LVCMOS33 PULL_MODE=NONE BANK_VCCIO=3.3;

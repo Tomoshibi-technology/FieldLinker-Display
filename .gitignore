@@ -1,0 +1,7 @@
+# OS / エディタ
+.DS_Store
+*.swp
+.vscode/
+.idea/
+
+

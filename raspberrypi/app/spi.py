@@ -50,7 +50,20 @@ class SpiTransmitter:
         if self._device is None:
             raise RuntimeError("SPI device is not initialized on this platform")
 
-        frame = bytes(self._config.frame_header) + payload + bytes(self._config.frame_footer)
+        grb_payload = bytearray(len(payload))
+        for i in range(0, len(payload), 3):
+            r = payload[i]
+            g = payload[i + 1]
+            b = payload[i + 2]
+            grb_payload[i] = g
+            grb_payload[i + 1] = r
+            grb_payload[i + 2] = b
+
+        frame = (
+            bytes(self._config.frame_header)
+            + bytes(grb_payload)
+            + bytes(self._config.frame_footer)
+        )
         self._device.xfer2(list(frame))
 
     def close(self) -> None:

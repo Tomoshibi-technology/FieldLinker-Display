@@ -4,4 +4,5 @@
 .vscode/
 .idea/
 
-
+# uv
+__pycache__/

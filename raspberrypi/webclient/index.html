@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>FieldLinker Display WebSocket テスター</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>FieldLinker Display WebSocket テスター</h1>
+      <p>WebSocket 経由で 3,600 バイトのフレームを送信するための簡易クライアントです。</p>
+    </header>
+
+    <div class="dashboard-grid">
+      <div class="column column-left">
+        <section class="panel">
+          <h2>接続設定</h2>
+          <div class="ws-url-block">
+            <label>
+              WebSocket ホスト
+              <input list="ws-host-options" id="ws-host" type="text" value="4b-01.local" />
+              <datalist id="ws-host-options">
+                <option value="127.0.0.1" />
+                <option value="4b-01.local" />
+              </datalist>
+            </label>
+            <div class="ws-url-row">
+              接続先: <code>ws://<span id="ws-host-display">4b-01.local</span>:8000/ws/frame</code>
+            </div>
+          </div>
+          <div class="button-row">
+            <button id="connect-btn">接続</button>
+            <button id="disconnect-btn" disabled>切断</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>フレーム編集</h2>
+          <h3 class="panel-subtitle">フレーム生成</h3>
+          <div class="form-grid">
+            <label>
+              単色 R
+              <input id="color-r" type="number" value="3" min="0" max="32" />
+            </label>
+            <label>
+              単色 G
+              <input id="color-g" type="number" value="3" min="0" max="32" />
+            </label>
+            <label>
+              単色 B
+              <input id="color-b" type="number" value="3" min="0" max="32" />
+            </label>
+          </div>
+          <div class="button-row">
+            <button id="solid-generate-btn">単色生成</button>
+            <button id="random-generate-btn">ランダム生成</button>
+            <button id="clear-frame-btn">リセット</button>
+            <button id="ring-generate-btn">リング</button>
+            <button id="stripe-generate-btn">ストライプ</button>
+          </div>
+          <hr />
+          <h3 class="panel-subtitle">ブラシ設定</h3>
+          <div class="brush-grid">
+            <div class="brush-color-display" id="brush-preview"></div>
+            <div>
+              <label>ブラシ R
+                <input id="brush-r" type="number" value="3" min="0" max="32" />
+              </label>
+              <label>ブラシ G
+                <input id="brush-g" type="number" value="20" min="0" max="32" />
+              </label>
+              <label>ブラシ B
+                <input id="brush-b" type="number" value="32" min="0" max="32" />
+              </label>
+              <label>ブラシ半径 (px)
+                <input id="brush-radius" type="range" min="4" max="60" value="10" />
+                <span id="brush-radius-value">10</span>
+              </label>
+            </div>
+            <div class="picker-block">
+              <label>Hue
+                <canvas id="hue-canvas" width="360" height="40"></canvas>
+              </label>
+              <label>Saturation
+                <canvas id="sat-canvas" width="360" height="40"></canvas>
+              </label>
+              <label>Value
+                <canvas id="val-canvas" width="360" height="40"></canvas>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>送信制御</h2>
+          <div class="form-grid">
+            <label>
+              frame_id
+              <input id="frame-id" type="number" value="1" min="0" />
+            </label>
+            <label>
+              自動送信間隔 (ms)
+              <input id="interval" type="number" value="50" min="50" />
+            </label>
+          </div>
+          <div class="button-row">
+            <button id="send-once-btn">1 回送信</button>
+            <button id="auto-toggle-btn">自動送信開始</button>
+          </div>
+          <p class="status">
+            状態: <span id="status">未接続</span>
+          </p>
+        </section>
+
+      </div>
+
+      <div class="column column-main">
+        <section class="panel panel-preview">
+          <h2>プレビュー</h2>
+          <canvas id="preview-canvas" width="720" height="720"></canvas>
+        </section>
+        <section class="panel panel-log">
+          <h2>ログ</h2>
+          <pre id="log"></pre>
+          <button id="clear-log-btn">ログをクリア</button>
+        </section>
+      </div>
+    </div>
+
+    <script type="module" src="./client.js"></script>
+  </body>
+</html>

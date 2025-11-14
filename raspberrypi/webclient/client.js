@@ -1,6 +1,6 @@
 const FRAME_SIZE = 3600;
 const MAX_BRIGHTNESS = 15;
-const PREVIEW_MULTIPLIER = 20; // 32 * 20 = 640, clamp to 255 for vivid preview
+const PREVIEW_MULTIPLIER = Math.max(1, Math.ceil(255 / MAX_BRIGHTNESS)); // stretch LED brightness to preview RGB range
 const LED_COUNT = 1200;
 const PIXEL_MAP_URL = "./assets/pixel_map.json";
 
@@ -32,6 +32,8 @@ const elements = {
   clearLogBtn: document.getElementById("clear-log-btn"),
   previewCanvas: document.getElementById("preview-canvas"),
 };
+
+const BRIGHTNESS_INPUT_IDS = ["color-r", "color-g", "color-b", "brush-r", "brush-g", "brush-b"];
 
 const state = {
   socket: null,
@@ -171,6 +173,16 @@ function clampByte(value) {
   return Math.min(MAX_BRIGHTNESS, Math.max(0, Math.floor(num)));
 }
 
+function initBrightnessInputs() {
+  BRIGHTNESS_INPUT_IDS.forEach((id) => {
+    const input = document.getElementById(id);
+    if (!input) return;
+    input.min = 0;
+    input.max = MAX_BRIGHTNESS;
+    input.value = String(clampByte(input.value));
+  });
+}
+
 function encodeBase64(uint8Array) {
   let binary = "";
   const chunkSize = 0x8000;
@@ -258,6 +270,8 @@ if (previewCanvas) {
   previewCanvas.addEventListener("pointerleave", handlePointerUp);
   previewCanvas.addEventListener("pointercancel", handlePointerUp);
 }
+
+initBrightnessInputs();
 
 elements.wsHost.addEventListener("input", () => {
   const value = elements.wsHost.value.trim() || "4b-01.local";

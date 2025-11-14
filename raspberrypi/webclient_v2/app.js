@@ -3,6 +3,7 @@ const LED_COUNT = 1200;
 const MAX_BRIGHTNESS = 15;
 const PREVIEW_MULTIPLIER = 18;
 const PIXEL_MAP_URL = "../webclient/assets/pixel_map.json";
+
 const PANELS = [
   { id: "panelA", label: "Display A", placeholder: "4b-01.local" },
   { id: "panelB", label: "Display B", placeholder: "4b-02.local" },
@@ -25,25 +26,38 @@ const sharedState = {
   autoTimer: null,
 };
 
-document.addEventListener("DOMContentLoaded", async () => {
-  await init();
+const previewState = {
+  canvas: null,
+  ctx: null,
+  regions: [],
+  brushColor: { r: 5, g: 5, b: 5 },
+  brushHSV: { h: 200, s: 90, v: 80 },
+  brushRadius: 12,
+  isPainting: false,
+  pointerId: null,
+  emptyPayload: new Uint8Array(FRAME_SIZE),
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+  init().catch((err) => log(`初期化に失敗: ${err}`, "error"));
 });
 
 async function init() {
-  try {
-    await loadPixelMap();
-    PANELS.forEach(setupPanel);
-    document.getElementById("clear-log").addEventListener("click", () => {
-      appState.logEntries = [];
-      renderLog();
-    });
-    sharedControls.send.addEventListener("click", () => sendBothPanels({ increment: true }));
-    sharedControls.auto.addEventListener("click", toggleSharedAutoSend);
-    updateSharedButtons();
-    log("pixel_map.json を読み込みました。Display A/B を接続してください。");
-  } catch (error) {
-    log(`pixel_map.json の読み込みに失敗: ${error}`, "error");
-  }
+  previewState.canvas = document.getElementById("preview-canvas");
+  initBrushControls();
+  await loadPixelMap();
+  setupPreviewCanvas();
+  PANELS.forEach(setupPanel);
+
+  document.getElementById("clear-log").addEventListener("click", () => {
+    appState.logEntries = [];
+    renderLog();
+  });
+  sharedControls.send.addEventListener("click", () => sendBothPanels({ increment: true }));
+  sharedControls.auto.addEventListener("click", toggleSharedAutoSend);
+  updateSharedButtons();
+  renderCombinedPreview();
+  log("pixel_map.json を読み込みました。Display A/B を接続してください。");
 }
 
 async function loadPixelMap() {
@@ -68,40 +82,22 @@ function setupPanel(panel) {
     colorG: document.getElementById(`${panel.id}-color-g`),
     colorB: document.getElementById(`${panel.id}-color-b`),
     status: document.getElementById(`${panel.id}-status`),
-    canvas: document.getElementById(`${panel.id}-canvas`),
   };
 
+  const region = previewState.regions.find((r) => r.panelId === panel.id);
   const state = {
     id: panel.id,
     label: panel.label,
     placeholder: panel.placeholder,
     socket: null,
     payload: new Uint8Array(FRAME_SIZE),
-    ctx: null,
-    coords: [],
+    coords: region?.coords ?? [],
   };
 
   elements.host.value = panel.placeholder;
   setupNumericClamp([elements.colorR, elements.colorG, elements.colorB]);
-  setupCanvas(state, elements.canvas);
   attachPanelEvents(state, elements);
   appState.panels[panel.id] = { state, elements };
-  drawPreview(state);
-}
-
-function setupNumericClamp(inputs) {
-  inputs.forEach((input) => {
-    input.addEventListener("input", () => {
-      const value = clampByte(input.value);
-      input.value = String(value);
-    });
-  });
-}
-
-function setupCanvas(state, canvas) {
-  const ctx = canvas.getContext("2d");
-  state.ctx = ctx;
-  state.coords = createCanvasCoords(canvas, appState.pixelMap);
 }
 
 function attachPanelEvents(state, elements) {
@@ -191,7 +187,7 @@ function buildRandomFrame() {
 
 function setPanelPayload(panelState, payload) {
   panelState.payload = payload;
-  drawPreview(panelState);
+  renderCombinedPreview();
 }
 
 function sendBothPanels({ increment }) {
@@ -200,9 +196,7 @@ function sendBothPanels({ increment }) {
   PANELS.forEach(({ id }) => {
     const panel = appState.panels[id];
     if (!panel) return;
-    if (sendFrameToPanel(panel.state, frameId)) {
-      sent = true;
-    }
+    if (sendFrameToPanel(panel.state, frameId)) sent = true;
   });
   if (increment && sent) {
     sharedControls.frame.value = String(frameId + 1);
@@ -215,14 +209,13 @@ function sendFrameToPanel(panelState, frameId) {
     log(`${panelState.label}: WebSocket が接続されていません`, "warn");
     return false;
   }
-  const payload = panelState.payload ?? new Uint8Array(FRAME_SIZE);
+  const payload = panelState.payload ?? previewState.emptyPayload;
   const message = {
     frame_id: frameId,
     data: encodeBase64(payload),
   };
   socket.send(JSON.stringify(message));
   log(`${panelState.label}: frame_id=${frameId} を送信`);
-  drawPreview(panelState);
   return true;
 }
 
@@ -257,58 +250,293 @@ function stopSharedAutoSend(reason) {
   updateSharedButtons();
 }
 
-function drawPreview(panelState) {
-  const ctx = panelState.ctx;
-  if (!ctx || !panelState.coords.length) return;
-  const payload = panelState.payload ?? new Uint8Array(FRAME_SIZE);
-  const { canvas } = ctx;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = "#050505";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+function setupPreviewCanvas() {
+  const canvas = previewState.canvas;
+  if (!canvas || !appState.pixelMap.length) return;
+  previewState.ctx = canvas.getContext("2d");
 
-  panelState.coords.forEach(({ x, y }, index) => {
-    const baseIdx = index * 3;
-    const r = payload[baseIdx] ?? 0;
-    const g = payload[baseIdx + 1] ?? 0;
-    const b = payload[baseIdx + 2] ?? 0;
-    const color = `rgb(${Math.min(255, r * PREVIEW_MULTIPLIER)},${Math.min(255, g * PREVIEW_MULTIPLIER)},${Math.min(
-      255,
-      b * PREVIEW_MULTIPLIER,
-    )})`;
-    ctx.beginPath();
-    ctx.fillStyle = color;
-    ctx.arc(x, y, 5, 0, Math.PI * 2);
-    ctx.fill();
+  const resize = () => {
+    const rect = canvas.getBoundingClientRect();
+    const cssWidth = rect.width || canvas.width;
+    const cssHeight = rect.height || canvas.height;
+    const dpr = window.devicePixelRatio || 1;
+    previewState.displayWidth = cssWidth;
+    previewState.displayHeight = cssHeight;
+    canvas.width = cssWidth * dpr;
+    canvas.height = cssHeight * dpr;
+    previewState.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    previewState.regions = PANELS.map((panel, index) =>
+      createRegionCoords(cssWidth, cssHeight, appState.pixelMap, index, PANELS.length, panel.id),
+    );
+    PANELS.forEach(({ id }) => {
+      const panel = appState.panels[id];
+      if (panel) {
+        panel.state.coords = previewState.regions.find((region) => region.panelId === id)?.coords ?? [];
+      }
+    });
+    renderCombinedPreview();
+  };
+
+  resize();
+  window.addEventListener("resize", resize);
+
+  canvas.addEventListener("pointerdown", handlePreviewPointerDown);
+  canvas.addEventListener("pointermove", handlePreviewPointerMove);
+  ["pointerup", "pointerleave", "pointercancel"].forEach((type) => {
+    canvas.addEventListener(type, handlePreviewPointerUp);
   });
-
-  const radius = Math.min(canvas.width, canvas.height) / 2 - 20;
-  ctx.strokeStyle = "rgba(255,255,255,0.2)";
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.arc(canvas.width / 2, canvas.height / 2, radius, 0, Math.PI * 2);
-  ctx.stroke();
 }
 
-function createCanvasCoords(canvas, pixelMap) {
-  const padding = 30;
+function createRegionCoords(canvasWidth, canvasHeight, pixelMap, index, total, panelId) {
+  const padding = 50;
+  const spacing = 40;
+  const totalSpacing = spacing * (total + 1);
+  const regionWidth = (canvasWidth - totalSpacing) / total;
+  const regionHeight = canvasHeight - padding * 2;
+
   const xs = pixelMap.map((p) => p.x);
   const ys = pixelMap.map((p) => p.y);
   const minX = Math.min(...xs);
   const maxX = Math.max(...xs);
   const minY = Math.min(...ys);
   const maxY = Math.max(...ys);
-  const usableWidth = canvas.width - padding * 2;
-  const usableHeight = canvas.height - padding * 2;
-  const scaleX = usableWidth / (maxX - minX || 1);
-  const scaleY = usableHeight / (maxY - minY || 1);
+  const scaleX = regionWidth / (maxX - minX || 1);
+  const scaleY = regionHeight / (maxY - minY || 1);
   const scale = Math.min(scaleX, scaleY);
-  const offsetX = padding + (usableWidth - (maxX - minX) * scale) / 2 - minX * scale;
-  const offsetY = padding + (usableHeight - (maxY - minY) * scale) / 2 - minY * scale;
 
-  return pixelMap.map((led) => ({
+  const left = spacing + index * (regionWidth + spacing);
+  const offsetX = left + (regionWidth - (maxX - minX) * scale) / 2 - minX * scale;
+  const offsetY = padding + (regionHeight - (maxY - minY) * scale) / 2 - minY * scale;
+  const radius = Math.min(regionWidth, regionHeight) / 2 - 5;
+
+  const coords = pixelMap.map((led) => ({
     x: led.x * scale + offsetX,
     y: led.y * scale + offsetY,
   }));
+
+  return {
+    panelId,
+    coords,
+    bounds: { xMin: left, xMax: left + regionWidth },
+    center: { x: left + regionWidth / 2, y: canvasHeight / 2 },
+    radius,
+  };
+}
+
+function renderCombinedPreview() {
+  const ctx = previewState.ctx;
+  if (!ctx) return;
+  ctx.clearRect(0, 0, previewState.displayWidth, previewState.displayHeight);
+  ctx.fillStyle = "#050505";
+  ctx.fillRect(0, 0, previewState.displayWidth, previewState.displayHeight);
+
+  previewState.regions.forEach((region) => {
+    const panel = appState.panels[region.panelId];
+    const payload = panel?.state.payload ?? previewState.emptyPayload;
+    const dotRadius = 5.5;
+    region.coords.forEach(({ x, y }, index) => {
+      const baseIdx = index * 3;
+      const r = payload[baseIdx] ?? 0;
+      const g = payload[baseIdx + 1] ?? 0;
+      const b = payload[baseIdx + 2] ?? 0;
+      ctx.fillStyle = `rgb(${Math.min(255, r * PREVIEW_MULTIPLIER)},${Math.min(255, g * PREVIEW_MULTIPLIER)},${Math.min(
+        255,
+        b * PREVIEW_MULTIPLIER,
+      )})`;
+      ctx.beginPath();
+      ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.strokeStyle = "rgba(255,255,255,0.25)";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(region.center.x, region.center.y, region.radius, 0, Math.PI * 2);
+    ctx.stroke();
+  });
+}
+
+function handlePreviewPointerDown(event) {
+  if (!previewState.canvas) return;
+  previewState.isPainting = true;
+  previewState.pointerId = event.pointerId;
+  previewState.canvas.setPointerCapture(event.pointerId);
+  paintAtEvent(event);
+}
+
+function handlePreviewPointerMove(event) {
+  if (!previewState.isPainting || previewState.pointerId !== event.pointerId) return;
+  paintAtEvent(event);
+}
+
+function handlePreviewPointerUp(event) {
+  if (previewState.pointerId === event.pointerId) {
+    previewState.isPainting = false;
+    previewState.pointerId = null;
+    previewState.canvas?.releasePointerCapture(event.pointerId);
+  }
+}
+
+function paintAtEvent(event) {
+  const point = getCanvasPoint(event);
+  if (!point) return;
+  const region = previewState.regions.find((r) => point.x >= r.bounds.xMin && point.x <= r.bounds.xMax);
+  if (!region) return;
+  const panel = appState.panels[region.panelId];
+  if (!panel) return;
+  const applied = applyBrush(panel.state, point.x, point.y, previewState.brushColor);
+  if (applied) renderCombinedPreview();
+}
+
+function getCanvasPoint(event) {
+  const canvas = previewState.canvas;
+  if (!canvas) return null;
+  const rect = canvas.getBoundingClientRect();
+  const x = ((event.clientX - rect.left) / rect.width) * previewState.displayWidth;
+  const y = ((event.clientY - rect.top) / rect.height) * previewState.displayHeight;
+  return { x, y };
+}
+
+function applyBrush(panelState, x, y, color) {
+  ensurePayload(panelState);
+  const coords = panelState.coords || [];
+  const payload = panelState.payload;
+  const radiusSq = previewState.brushRadius * previewState.brushRadius;
+  let affected = false;
+  coords.forEach((coord, idx) => {
+    const dx = coord.x - x;
+    const dy = coord.y - y;
+    if (dx * dx + dy * dy <= radiusSq) {
+      const base = idx * 3;
+      payload[base] = color.r;
+      payload[base + 1] = color.g;
+      payload[base + 2] = color.b;
+      affected = true;
+    }
+  });
+  return affected;
+}
+
+function ensurePayload(panelState) {
+  if (!panelState.payload || panelState.payload.length !== FRAME_SIZE) {
+    panelState.payload = new Uint8Array(FRAME_SIZE);
+  }
+}
+
+function initBrushControls() {
+  const hue = document.getElementById("brush-h");
+  const sat = document.getElementById("brush-s");
+  const val = document.getElementById("brush-v");
+  const radius = document.getElementById("brush-radius");
+  const radiusValue = document.getElementById("brush-radius-value");
+
+  const updateBrush = () => {
+    previewState.brushHSV = {
+      h: Number(hue.value) || 0,
+      s: Number(sat.value) || 0,
+      v: Number(val.value) || 0,
+    };
+    const rgb = hsvToRgb255(previewState.brushHSV.h, previewState.brushHSV.s, previewState.brushHSV.v);
+    previewState.brushColor = {
+      r: clampByte(Math.round((rgb.r / 255) * MAX_BRIGHTNESS)),
+      g: clampByte(Math.round((rgb.g / 255) * MAX_BRIGHTNESS)),
+      b: clampByte(Math.round((rgb.b / 255) * MAX_BRIGHTNESS)),
+    };
+    updateBrushSliderBackgrounds({ hue, sat, val });
+    updateSliderValueLabel("brush-h", `${previewState.brushHSV.h}°`);
+    updateSliderValueLabel("brush-s", `${previewState.brushHSV.s}%`);
+    updateSliderValueLabel("brush-v", `${previewState.brushHSV.v}%`);
+  };
+
+  [hue, sat, val].forEach((slider) => slider.addEventListener("input", updateBrush));
+  updateBrush();
+
+  const updateRadius = () => {
+    const value = Math.max(2, Number(radius.value) || 12);
+    previewState.brushRadius = value;
+    if (radiusValue) radiusValue.textContent = String(value);
+  };
+  radius.addEventListener("input", updateRadius);
+  updateRadius();
+}
+
+function updateBrushSliderBackgrounds({ hue, sat, val }) {
+  hue.style.background = `
+    linear-gradient(
+      to right,
+      #ff0000,
+      #ffff00,
+      #00ff00,
+      #00ffff,
+      #0000ff,
+      #ff00ff,
+      #ff0000
+    )
+  `;
+  const left = hsvToCss(previewState.brushHSV.h, 0, previewState.brushHSV.v);
+  const right = hsvToCss(previewState.brushHSV.h, 100, previewState.brushHSV.v);
+  sat.style.background = `linear-gradient(to right, ${left}, ${right})`;
+  const dark = hsvToCss(previewState.brushHSV.h, previewState.brushHSV.s, 0);
+  const bright = hsvToCss(previewState.brushHSV.h, previewState.brushHSV.s, 100);
+  val.style.background = `linear-gradient(to right, ${dark}, ${bright})`;
+}
+
+function hsvToRgb255(h, s, v) {
+  const sat = s / 100;
+  const val = v / 100;
+  const c = val * sat;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = val - c;
+  let r1 = 0;
+  let g1 = 0;
+  let b1 = 0;
+  if (h >= 0 && h < 60) {
+    r1 = c;
+    g1 = x;
+  } else if (h >= 60 && h < 120) {
+    r1 = x;
+    g1 = c;
+  } else if (h >= 120 && h < 180) {
+    g1 = c;
+    b1 = x;
+  } else if (h >= 180 && h < 240) {
+    g1 = x;
+    b1 = c;
+  } else if (h >= 240 && h < 300) {
+    r1 = x;
+    b1 = c;
+  } else {
+    r1 = c;
+    b1 = x;
+  }
+  return {
+    r: Math.round((r1 + m) * 255),
+    g: Math.round((g1 + m) * 255),
+    b: Math.round((b1 + m) * 255),
+  };
+}
+
+function hsvToCss(h, s, v) {
+  const { r, g, b } = hsvToRgb255(h, s, v);
+  return `rgb(${r},${g},${b})`;
+}
+
+function updateSliderValueLabel(id, text) {
+  const label = document.querySelector(`[data-slider-value="${id}"]`);
+  if (label) label.textContent = text;
+}
+
+function setupNumericClamp(inputs, onChange) {
+  inputs.forEach((input) => {
+    const valueLabel = document.querySelector(`[data-slider-value="${input.id}"]`);
+    const update = () => {
+      const value = clampByte(input.value);
+      input.value = String(value);
+      if (valueLabel) valueLabel.textContent = String(value);
+      if (onChange) onChange();
+    };
+    input.addEventListener("input", update);
+    update();
+  });
 }
 
 function updateSharedButtons() {

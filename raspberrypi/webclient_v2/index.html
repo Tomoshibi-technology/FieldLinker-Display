@@ -47,15 +47,18 @@
           </div>
           <details>
             <summary>フレーム生成</summary>
-            <div class="form-grid">
+            <div class="form-grid slider-grid">
               <label>R
-                <input type="number" id="panelA-color-r" min="0" max="15" value="5" />
+                <input type="range" id="panelA-color-r" min="0" max="15" value="5" />
+                <span data-slider-value="panelA-color-r">5</span>
               </label>
               <label>G
-                <input type="number" id="panelA-color-g" min="0" max="15" value="5" />
+                <input type="range" id="panelA-color-g" min="0" max="15" value="5" />
+                <span data-slider-value="panelA-color-g">5</span>
               </label>
               <label>B
-                <input type="number" id="panelA-color-b" min="0" max="15" value="5" />
+                <input type="range" id="panelA-color-b" min="0" max="15" value="5" />
+                <span data-slider-value="panelA-color-b">5</span>
               </label>
             </div>
             <div class="button-row">
@@ -63,7 +66,6 @@
               <button id="panelA-random">ランダム生成</button>
             </div>
           </details>
-          <canvas id="panelA-canvas" width="500" height="500"></canvas>
           <p class="status">状態: <span id="panelA-status">未接続</span></p>
         </div>
 
@@ -83,15 +85,18 @@
           </div>
           <details>
             <summary>フレーム生成</summary>
-            <div class="form-grid">
+            <div class="form-grid slider-grid">
               <label>R
-                <input type="number" id="panelB-color-r" min="0" max="15" value="5" />
+                <input type="range" id="panelB-color-r" min="0" max="15" value="5" />
+                <span data-slider-value="panelB-color-r">5</span>
               </label>
               <label>G
-                <input type="number" id="panelB-color-g" min="0" max="15" value="5" />
+                <input type="range" id="panelB-color-g" min="0" max="15" value="5" />
+                <span data-slider-value="panelB-color-g">5</span>
               </label>
               <label>B
-                <input type="number" id="panelB-color-b" min="0" max="15" value="5" />
+                <input type="range" id="panelB-color-b" min="0" max="15" value="5" />
+                <span data-slider-value="panelB-color-b">5</span>
               </label>
             </div>
             <div class="button-row">
@@ -99,9 +104,32 @@
               <button id="panelB-random">ランダム生成</button>
             </div>
           </details>
-          <canvas id="panelB-canvas" width="500" height="500"></canvas>
           <p class="status">状態: <span id="panelB-status">未接続</span></p>
         </div>
+      </section>
+
+      <section class="panel preview-panel">
+        <h2>プレビュー & ブラシ操作</h2>
+        <div class="form-grid brush-grid">
+          <label>Hue
+            <input type="range" id="brush-h" min="0" max="360" value="200" />
+            <span data-slider-value="brush-h">200°</span>
+          </label>
+          <label>Saturation
+            <input type="range" id="brush-s" min="0" max="100" value="90" />
+            <span data-slider-value="brush-s">90%</span>
+          </label>
+          <label>Value
+            <input type="range" id="brush-v" min="0" max="100" value="80" />
+            <span data-slider-value="brush-v">80%</span>
+          </label>
+          <label>ブラシ半径 (px)
+            <input type="range" id="brush-radius" min="2" max="60" value="12" />
+            <span id="brush-radius-value">12</span>
+          </label>
+        </div>
+        <canvas id="preview-canvas" width="1100" height="550"></canvas>
+        <p class="hint">左側が Display A、右側が Display B です。同じブラシ設定でどちらも編集できます。</p>
       </section>
 
       <section class="panel log-panel">

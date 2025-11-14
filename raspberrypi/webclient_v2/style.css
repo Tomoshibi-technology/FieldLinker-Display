@@ -61,6 +61,45 @@ main.layout {
   margin-bottom: 1rem;
 }
 
+.slider-grid label,
+.brush-grid label {
+  min-width: 120px;
+}
+
+input[type="range"] {
+  appearance: none;
+  height: 4px;
+  border-radius: 4px;
+  background: #444;
+  position: relative;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #00d2ff;
+  cursor: pointer;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #00d2ff;
+  cursor: pointer;
+}
+
+.brush-grid span {
+  font-size: 0.85rem;
+  color: #bbb;
+}
+
+.brush-grid label input[type="range"] {
+  height: 8px;
+}
+
 label {
   display: flex;
   flex-direction: column;
@@ -118,6 +157,11 @@ canvas {
   background: #050505;
   display: block;
   margin-bottom: 0.5rem;
+}
+
+#preview-canvas {
+  max-width: 1200px;
+  margin: 1rem auto 0.5rem;
 }
 
 .status {

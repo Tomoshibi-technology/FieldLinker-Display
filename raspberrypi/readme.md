@@ -69,3 +69,21 @@ python -m http.server 8080
 ```
 ブラウザで `http://127.0.0.1:8080` を開き、WebSocket URL に `ws://<raspi-ip>:8000/ws/frame` を入力して接続すると、ランダムまたは単色フレームを簡単に送信できます。自動送信機能を使えば連続フレーム送信も確認できます。
 必要に応じて systemd サービス化や TLS 終端は別途設定してください。
+
+## 6. Python ディスプレイシミュレーター
+WebSocket で受信したフレームをそのまま matplotlib で可視化するシミュレーターを `raspberrypi/simulator/display_simulator.py` に用意しました。FPGA を接続していなくても LED 状態をデバッグできます。
+
+### セットアップ
+```bash
+cd raspberrypi
+uv pip install .[simulator] websockets
+```
+`.[simulator]` には Voronoi 描画に必要な `matplotlib` / `scipy` が含まれます。`websockets` は FastAPI 側でも使用しているため、未導入なら一緒にインストールしてください。
+
+### 起動方法
+```bash
+uv run python simulator/display_simulator.py --host 0.0.0.0 --port 8000
+```
+- `pixel_map.json`（既定は `webclient/assets/pixel_map.json`）に基づいて LED 座標を描画します。
+- Web クライアントから `ws://<sim-host>:8000/ws/frame` に接続すると、受信したフレームが GUI 上のキャンバスに即時反映され、ACK (`{"status":"ok","frame_id":...}`) も返します。
+- `Ctrl+C` で終了できます。

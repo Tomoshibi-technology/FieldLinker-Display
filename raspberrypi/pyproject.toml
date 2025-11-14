@@ -12,3 +12,8 @@ dependencies = [
 
 [project.optional-dependencies]
 raspi = ["spidev>=3.6"]
+simulator = ["matplotlib>=3.8", "scipy>=1.11"]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+exclude = ["webclient*", "simulator*"]

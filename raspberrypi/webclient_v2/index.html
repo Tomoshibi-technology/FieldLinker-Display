@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FieldLinker Display Control v2</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>FieldLinker Display Control v2</h1>
+      <p>2つの螺旋ディスプレイを同時に制御できるブラウザ専用クライアントです。</p>
+    </header>
+
+    <section class="panel shared-controls">
+      <h2>送信制御 (A + B 同期)</h2>
+      <div class="form-grid">
+        <label>frame_id
+          <input type="number" id="shared-frame" min="0" value="1" />
+        </label>
+        <label>自動送信間隔 (ms)
+          <input type="number" id="shared-interval" min="50" value="100" />
+        </label>
+      </div>
+      <div class="button-row">
+        <button id="shared-send" disabled>両方へ 1 回送信</button>
+        <button id="shared-auto" disabled>両方自動送信開始</button>
+      </div>
+      <p class="hint">1 回送信では frame_id を据え置き、自動送信中のみ自動インクリメントします。</p>
+    </section>
+
+    <main class="layout">
+      <section class="panel-group">
+        <div class="panel" id="panel-panelA">
+          <h2>Display A</h2>
+          <div class="form-grid">
+            <label>Host/IP
+              <input type="text" id="panelA-host" placeholder="4b-01.local" />
+            </label>
+            <label>Port
+              <input type="number" id="panelA-port" min="1" max="65535" value="8000" />
+            </label>
+          </div>
+          <div class="button-row">
+            <button id="panelA-connect">接続</button>
+            <button id="panelA-disconnect" disabled>切断</button>
+          </div>
+          <details>
+            <summary>フレーム生成</summary>
+            <div class="form-grid slider-grid">
+              <label>R
+                <input type="range" id="panelA-color-r" min="0" max="15" value="5" />
+                <span data-slider-value="panelA-color-r">5</span>
+              </label>
+              <label>G
+                <input type="range" id="panelA-color-g" min="0" max="15" value="5" />
+                <span data-slider-value="panelA-color-g">5</span>
+              </label>
+              <label>B
+                <input type="range" id="panelA-color-b" min="0" max="15" value="5" />
+                <span data-slider-value="panelA-color-b">5</span>
+              </label>
+            </div>
+            <div class="button-row">
+              <button id="panelA-solid">単色生成</button>
+              <button id="panelA-random">ランダム生成</button>
+            </div>
+          </details>
+          <p class="status">状態: <span id="panelA-status">未接続</span></p>
+        </div>
+
+        <div class="panel" id="panel-panelB">
+          <h2>Display B</h2>
+          <div class="form-grid">
+            <label>Host/IP
+              <input type="text" id="panelB-host" placeholder="4b-02.local" />
+            </label>
+            <label>Port
+              <input type="number" id="panelB-port" min="1" max="65535" value="8000" />
+            </label>
+          </div>
+          <div class="button-row">
+            <button id="panelB-connect">接続</button>
+            <button id="panelB-disconnect" disabled>切断</button>
+          </div>
+          <details>
+            <summary>フレーム生成</summary>
+            <div class="form-grid slider-grid">
+              <label>R
+                <input type="range" id="panelB-color-r" min="0" max="15" value="5" />
+                <span data-slider-value="panelB-color-r">5</span>
+              </label>
+              <label>G
+                <input type="range" id="panelB-color-g" min="0" max="15" value="5" />
+                <span data-slider-value="panelB-color-g">5</span>
+              </label>
+              <label>B
+                <input type="range" id="panelB-color-b" min="0" max="15" value="5" />
+                <span data-slider-value="panelB-color-b">5</span>
+              </label>
+            </div>
+            <div class="button-row">
+              <button id="panelB-solid">単色生成</button>
+              <button id="panelB-random">ランダム生成</button>
+            </div>
+          </details>
+          <p class="status">状態: <span id="panelB-status">未接続</span></p>
+        </div>
+      </section>
+
+      <section class="panel preview-panel">
+        <h2>プレビュー & ブラシ操作</h2>
+        <div class="form-grid brush-grid">
+          <label>Hue
+            <input type="range" id="brush-h" min="0" max="360" value="200" />
+            <span data-slider-value="brush-h">200°</span>
+          </label>
+          <label>Saturation
+            <input type="range" id="brush-s" min="0" max="100" value="90" />
+            <span data-slider-value="brush-s">90%</span>
+          </label>
+          <label>Value
+            <input type="range" id="brush-v" min="0" max="100" value="80" />
+            <span data-slider-value="brush-v">80%</span>
+          </label>
+          <label>ブラシ半径 (px)
+            <input type="range" id="brush-radius" min="2" max="60" value="12" />
+            <span id="brush-radius-value">12</span>
+          </label>
+        </div>
+        <canvas id="preview-canvas" width="1100" height="550"></canvas>
+        <p class="hint">左側が Display A、右側が Display B です。同じブラシ設定でどちらも編集できます。</p>
+      </section>
+
+      <section class="panel log-panel">
+        <h2>ログ</h2>
+        <pre id="log"></pre>
+        <button id="clear-log">ログをクリア</button>
+      </section>
+    </main>
+
+    <footer>
+      <p>同一 pixel map を参照しつつ、Display A/B の接続先のみを切り替えられます。</p>
+    </footer>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
